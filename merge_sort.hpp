@@ -5,26 +5,29 @@
 #include <future>
 #include <vector>
 #include <queue>
+#include <functional>
 
 #define MAX_SIZE 100
 #define MAX_THREADS 4
 
 typedef std::size_t max_i;
-typedef std::packaged_task<void(max_i*, max_i, max_i)> Task;
+using Task = std::packaged_task<void()>;
 typedef std::future<void> Future;
 typedef std::vector<Future> v_future;
+class TaskQueue;
 
-void mergeSort(max_i *arr, max_i L, max_i R);
+void mergeSort(TaskQueue& tasks, max_i *arr, max_i L, max_i R);
+void mergeSort(max_i *array, std::size_t size, std::size_t threads);
 void merge(max_i *arr, max_i L, max_i M, max_i R);
 void thread_start(std::packaged_task<void(max_i*,max_i,max_i)>& task, max_i* arr, max_i L, max_i R);
 void print(max_i* arr, max_i size);
 
-class Task_queue {
+class TaskQueue {
 private:
     std::queue<Task> m_queue;
     std::mutex m_mutex;
     std::condition_variable m_cv;
-    bool closed = false;
+    bool m_closed = false;
 public:
     void push(Task task) {
         std::unique_lock lock(m_mutex);
@@ -32,12 +35,32 @@ public:
         lock.unlock();
         m_cv.notify_all();
     }
-    bool run();
-    void close();
+    bool run() {
+        std::unique_lock lock(m_mutex);
+        m_cv.wait(lock, [this]{ return !m_queue.empty() || m_closed; });
+        if (!m_queue.empty()) {
+            auto task = std::move(m_queue.front());
+            m_queue.pop();
+            const bool result = !m_closed || !m_queue.empty();
+            lock.unlock();
+            m_cv.notify_all();
+            task();
+            return result;
+        } else {
+            return !m_closed;
+        }
+    }
+    void close() {
+        std::unique_lock lock(m_mutex);
+        m_closed = true;
+        lock.unlock();
+        m_cv.notify_all();
+    }
 };
 
 class Merge_sort {
 private:
+    TaskQueue m_taskqueue;
     max_i* m_arr;
     std::vector<Task> m_tasks;
     v_future m_future;
@@ -46,6 +69,7 @@ public:
 /* коструктор по умолчанию в качестве примера
 сам сгенерирует массив на 100 рандомных элементов и сделает мерж
 в 4 потока*/
+/*
     Merge_sort() {
         max_i sys_count = 10;
         while (sys_count) {
@@ -93,10 +117,11 @@ public:
                 std::cout << "No heap space!" << std::endl;
             }
     }
-
+*/
     Merge_sort(std::size_t* arr, std::size_t arr_size, std::size_t threads) {
-
+        
     }
+
     ~Merge_sort() {
         delete [] m_arr;
     }

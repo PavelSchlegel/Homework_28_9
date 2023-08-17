@@ -48,15 +48,41 @@ void merge(max_i *arr, max_i L, max_i M, max_i R)
    }
 }
 
-void mergeSort(max_i *arr, max_i L, max_i R)
+void mergeSort(TaskQueue& tasks, max_i *arr, max_i L, max_i R)
 {
     if (L >= R) {
         return; //выход из рекурсии
     }
     max_i M = (L + R - 1) / 2;
-    mergeSort(arr, L, M);
-    mergeSort(arr, M + 1, R);
+    std::function<void()> fn = [&tasks, arr, M, R]{ mergeSort(tasks, arr, M + 1, R); };
+    Task task(fn);
+    auto result = task.get_future();
+    tasks.push(std::move(task));
+    //Task task();
+    mergeSort(tasks, arr, L, M);
+    result.get();
+    //
     merge(arr, L, M, R);
+}
+
+void mergeSort(max_i *array, std::size_t size, std::size_t threads)
+{
+    TaskQueue tasks;
+    std::vector<std::thread> m_threads;
+    for (std::size_t i = 0; i < m_threads.size() - 1; ++i) {
+        m_threads.emplace_back(
+            [&] {
+                while(tasks.run());
+            }
+        );
+    }
+    mergeSort(tasks, array, 0, size - 1);
+    tasks.close();
+    for (auto& thread : m_threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
 }
 
 void print(max_i* arr, max_i size)
