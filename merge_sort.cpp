@@ -1,24 +1,26 @@
 #include <iostream>
+#include <mutex>
 #include "merge_sort.hpp"
 
-typedef std::size_t big_n;
-typedef std::future<void> future;
-void merge(big_n *arr, big_n L, big_n M, big_n R)
+typedef std::size_t max_i;
+
+//код из юнита
+void merge(max_i *arr, max_i L, max_i M, max_i R)
 {
-   big_n nl = M - L + 1;
-   big_n nr = R - M;
+   max_i nl = M - L + 1;
+   max_i nr = R - M;
 
    // создаем временные массивы
-   big_n left[nl], right[nr];
+   max_i left[nl], right[nr];
 
    // копируем данные во временные массивы
-   for (big_n i = 0; i < nl; i++)
+   for (max_i i = 0; i < nl; i++)
        left[i] = arr[L + i];
-   for (big_n j = 0; j < nr; j++)
+   for (max_i j = 0; j < nr; j++)
        right[j] = arr[M + 1 + j];
 
-   big_n i = 0, j = 0;
-   big_n k = L;  // начало левой части
+   max_i i = 0, j = 0;
+   max_i k = L;  // начало левой части
 
    while (i < nl && j < nr) {
        // записываем минимальные элементы обратно во входной массив
@@ -46,30 +48,26 @@ void merge(big_n *arr, big_n L, big_n M, big_n R)
    }
 }
 
-void mergeSort(big_n *arr, big_n L, big_n R)
+void mergeSort(max_i *arr, max_i L, max_i R)
 {
     if (L >= R) {
         return; //выход из рекурсии
     }
-
-    big_n M = (L + R - 1) / 2;
-    future A = std::async(std::launch::async, mergeSort, arr, L, M);
-    A.wait();
-    // mergeSort(arr, L, M);
-    future B = std::async(std::launch::async, mergeSort, arr, M + 1, R);
-    B.wait();
-    // mergeSort(arr, M + 1, R);
-    future C = std::async(std::launch::async, merge, arr, L, M, R);
-    C.wait();
-    // merge(arr, L, M, R);
+    max_i M = (L + R - 1) / 2;
+    mergeSort(arr, L, M);
+    mergeSort(arr, M + 1, R);
+    merge(arr, L, M, R);
 }
 
-void arrPrint(big_n *arr, big_n size)
+void print(max_i* arr, max_i size)
 {
-    for (big_n i = 0; i < size; ++i) {
-        if (arr[i] > arr[i + 1]) {
-            std::cout << "Array is unsorted!" << std::endl;
-        }
+    max_i str = 0;
+    for (max_i i = 0; i < size; ++i) {
         std::cout << arr[i] << " ";
+        ++str;
+        if (str == 10) {
+            std::cout << std::endl;
+            str = 0;
+        }
     }
 }
